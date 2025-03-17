@@ -18,7 +18,7 @@ ENV BUGSNAG_SESSIONS_URL https://sessions.coinbase.com
 # Install dependencies
 RUN yarn --immutable
 
-RUN yarn workspace @app/bridge next build
+RUN yarn workspace @app/bridge build
 RUN yarn workspaces focus --all --production
 
 EXPOSE 3000
