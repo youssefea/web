@@ -567,8 +567,12 @@ export const sidebar: Sidebar = [
         collapsed: true,
         items: [
           {
-            text: 'Introduction',
-            link: '/builderkits/minikit/introduction',
+            text: 'Overview',
+            link: '/builderkits/minikit/overview',
+          },
+          {
+            text: 'Quickstart',
+            link: '/builderkits/minikit/quickstart',
           },
         ],
       },
