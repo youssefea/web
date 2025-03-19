@@ -1,23 +1,15 @@
 import fs from 'fs';
-import { linkCatalog } from './linkCatalog.ts';
+import type { PageLinkCatalog } from './createLinkCatalog.ts';
 
 type Link = {
   href: string;
   valid: boolean;
 };
 
-// Usage:
-// All links:     npx tsx linkCatalogCsv.ts all
-// Broken links:  npx tsx linkCatalogCsv.ts broken
-
-const arg = process.argv[2]; // 'all' or 'broken'
-
 /**
  * Creates a CSV file with the page path and all links in the file.
  */
-export async function createLinkCatalogCsv() {
-  const pages = await linkCatalog();
-
+export async function createLinkCatalogCsv(pages: PageLinkCatalog[], linkType: 'all' | 'broken') {
   const rows: [string, Link][] = [];
   for (const page of pages) {
     const pagePath = Object.keys(page)[0];
@@ -30,15 +22,13 @@ export async function createLinkCatalogCsv() {
 
   const csvContent = ['page, href, valid\n'];
   for (const [page, link] of rows) {
-    if (arg === 'all' || (arg === 'broken' && !link.valid)) {
+    if (linkType === 'all' || (linkType === 'broken' && !link.valid)) {
       csvContent.push(`${page}, ${link.href}, ${link.valid}`);
     }
   }
 
   fs.writeFileSync(
-    `apps/base-docs/scripts/linkCatalog/link-catalog-${arg}.csv`,
+    `apps/base-docs/scripts/linkCatalog/link-catalog-${linkType}.csv`,
     csvContent.join('\n'),
   );
 }
-
-void createLinkCatalogCsv();
