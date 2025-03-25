@@ -3,72 +3,7 @@ import { isDevelopment } from 'apps/web/src/constants';
 import { logger } from './logger';
 
 /**
- * Pulled directly from `node_modules/@upstash/redis/zmscore-b6b93f14.d.ts`
- * @see https://github.com/upstash/redis-js/blob/81544769cac75d7445f5741778ce8dd66ef39509/pkg/commands/set.ts#L4
- */
-type SetCommandOptions = {
-  get?: boolean;
-} & (
-  | {
-      ex: number;
-      px?: never;
-      exat?: never;
-      pxat?: never;
-      keepTtl?: never;
-    }
-  | {
-      ex?: never;
-      px: number;
-      exat?: never;
-      pxat?: never;
-      keepTtl?: never;
-    }
-  | {
-      ex?: never;
-      px?: never;
-      exat: number;
-      pxat?: never;
-      keepTtl?: never;
-    }
-  | {
-      ex?: never;
-      px?: never;
-      exat?: never;
-      pxat: number;
-      keepTtl?: never;
-    }
-  | {
-      ex?: never;
-      px?: never;
-      exat?: never;
-      pxat?: never;
-      keepTtl: true;
-    }
-  | {
-      ex?: never;
-      px?: never;
-      exat?: never;
-      pxat?: never;
-      keepTtl?: never;
-    }
-) &
-  (
-    | {
-        nx: true;
-        xx?: never;
-      }
-    | {
-        xx: true;
-        nx?: never;
-      }
-    | {
-        xx?: never;
-        nx?: never;
-      }
-  );
-
-/**
- * Provides a limited, safe interface to Redis operations.
+ * Provides a limited, type-safe interface to Redis operations.
  * Intentionally restricts access to dangerous commands and raw client operations.
  */
 class KVManager {
@@ -108,15 +43,30 @@ class KVManager {
     }
   }
 
-  async set<T>(key: string, value: T, options?: SetCommandOptions) {
+  async set<T>(
+    key: string,
+    value: T,
+    options?: {
+      ex?: number;
+      nx?: boolean;
+    },
+  ) {
     try {
       const client = await this.getClient();
-      return await client.set(
-        key,
-        JSON.stringify(value),
-        options as unknown as Parameters<Redis['set']>[2], // options argument must satisfy any of the types
-        // of the third parameter of the Redis client's set method
-      );
+      const stringifiedValue = JSON.stringify(value);
+
+      if (!options) {
+        return await client.set(key, stringifiedValue);
+      }
+      if (options.ex && options.nx) {
+        return await client.set(key, stringifiedValue, 'EX', options.ex, 'NX');
+      }
+      if (options.nx) {
+        return await client.set(key, stringifiedValue, 'NX');
+      }
+      if (options.ex) {
+        return await client.set(key, stringifiedValue, 'EX', options.ex);
+      }
     } catch (err) {
       if (!isDevelopment) {
         logger.error('Failed to set key', err);
