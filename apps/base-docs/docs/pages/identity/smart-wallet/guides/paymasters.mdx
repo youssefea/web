@@ -1,52 +1,75 @@
+import { Callout } from "vocs/components"
+
 # Paymasters (Sponsored Transactions)
 
 One of the biggest UX enhancements unlocked by Smart Wallet is the ability for app developers to sponsor their users' transactions. If your app supports Smart Wallet, you can start sponsoring your users' transactions by using [standardized paymaster service communication](https://erc7677.xyz) enabled by [new wallet RPC methods](https://eip5792.xyz).
 
 The code below is also in our [Wagmi Smart Wallet template](https://github.com/wilsoncusack/wagmi-scw/).
 
-## Using Wagmi + Permissionless in a Next.js app
+<Callout type="warning">
+**About The Hooks Used Below**
 
-:::warning
 The `useWriteContracts` and `useCapabilities` hooks used below rely on new wallet RPC and are not yet supported in most wallets.
 It is recommended to have a fallback function if your app supports wallets other than Smart Wallet.
-:::
+</Callout>
+
+## Using Wagmi/Viem in a Next.js app
 
 ::::steps
 
 ### Choose a paymaster service provider
 
-As a prerequisite, you'll need to obtain a paymaster service URL from a paymaster service provider. To be compatible with Smart Wallet, the paymaster provider you choose must be ERC-7677-compliant.
+As a prerequisite, you'll need to obtain a paymaster service URL from a paymaster service provider.
 
-We recommend the [Coinbase Developer Platform](https://www.coinbase.com/developer-platform) paymaster, currently offering up to $15k in gas credits as part of the Base Gasless Campaign(/identity/smart-wallet/introduction/base-gasless-campaign).
-You can find a full list of ERC-7677-compliant paymaster services [here](https://www.erc7677.xyz/ecosystem/paymasters).
+We recommend the [Coinbase Developer Platform](https://www.coinbase.com/developer-platform) paymaster,
+currently offering up to $15k in gas credits as part of the [Base Gasless Campaign](/identity/smart-wallet/introduction/base-gasless-campaign).
+
+Once you have signed up for Coinbase Developer Platform, you get your Paymaster service URL by navigating to Onchain Tools > Paymaster as shown below:
+
+<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+  <img
+    alt="Paymaster CDP"
+    src="/images/smart-wallet/PaymasterCDP.png"
+    width="1000"
+    loading="lazy"
+  />
+  <em>How to get your Paymaster service URL</em>
+</div>
 
 Once you choose a paymaster service provider and obtain a paymaster service URL, you can proceed to integration.
 
-### (Recommended) Setup your paymaster proxy
+<Callout type="warning">
+**ERC-7677-Compliant Paymaster Providers**
 
-Creating an API to proxy calls to your paymaster service is important for two reasons.
+To be compatible with Smart Wallet, the paymaster provider you choose must be [ERC-7677-compliant](https://www.erc7677.xyz/ecosystem/paymasters).
 
-1. Allows you to protect any API secret.
-2. Allows you to add extra validation on what requests you want to sponsor.
+</Callout>
 
-#### Validate UserOperation
 
-:::info
-`willSponsor` can be simplified or removed entirely if your paymaster service supports allowlisting which
-contracts and function calls should be sponsored. [Coinbase Developer Platform](https://www.coinbase.com/developer-platform) supports this.
-:::
-Before we write our proxy, let's write a `willSponsor` function to add some extra validation.
+### Validate UserOperation
+
 The policies on many paymaster services are quite simple and limited. As your API will be exposed on the web,
 you want to make sure in cannot abused: called to sponsor transaction you do not want to fund. The checks below
 are a bit tedious, but highly recommended to be safe. See "Trust and Validation" [here](https://hackmd.io/@AhweV9sISeevhvrtVPCGDw/BynRsX7Ca#Trust-and-Validation)
 for more on this.
+
+The goal of this section is to write a `willSponsor` function to add some extra validation if needed.
+
+<Callout type="success">
+**About `willSponsor`**
+
+`willSponsor` can be simplified or removed entirely if your paymaster service supports allowlisting which
+contracts and function calls should be sponsored. [Coinbase Developer Platform](https://www.coinbase.com/developer-platform) supports this.
+</Callout>
 
 The code below is built specifically for Smart Wallet. It would need to be updated to support other smart accounts.
 :::code-group
 
 ```ts twoslash [utils.ts]
 // @errors: 2305
-import { ENTRYPOINT_ADDRESS_V06, UserOperation } from "permissionless";
+// @noErrors
+import { UserOperation } from "viem/account-abstraction";
+import { entryPoint06Address } from "viem/account-abstraction";
 import {
   Address,
   BlockTag,
@@ -55,59 +78,49 @@ import {
   decodeFunctionData,
 } from "viem";
 import { baseSepolia } from "viem/chains";
-import {client} from "./config"
+import { client } from "./config";
 import {
   coinbaseSmartWalletABI,
-  coinbaseSmartWalletFactoryAddress,
   coinbaseSmartWalletProxyBytecode,
   coinbaseSmartWalletV1Implementation,
   erc1967ProxyImplementationSlot,
-  magicSpendAddress
-} from "./constants"
-import { myNFTABI, myNFTAddress } from "./myNFT";
+  magicSpendAddress,
+} from "./constants";
+import { myNFTABI, myNFTAddress } from "@/ABIs/myNFT";
 
-// @noErrors
+// @noErrors 
+
 export async function willSponsor({
   chainId,
   entrypoint,
   userOp,
-}: { chainId: number; entrypoint: string; userOp: UserOperation<"v0.6"> }) {
+}: { chainId: number; entrypoint: string; userOp: UserOperation<'0.6'> }) {
   // check chain id
   if (chainId !== baseSepolia.id) return false;
   // check entrypoint
   // not strictly needed given below check on implementation address, but leaving as example
-  if (entrypoint.toLowerCase() !== ENTRYPOINT_ADDRESS_V06.toLowerCase())
+  if (entrypoint.toLowerCase() !== entryPoint06Address.toLowerCase())
     return false;
 
   try {
     // check the userOp.sender is a proxy with the expected bytecode
     const code = await client.getBytecode({ address: userOp.sender });
+    if (code != coinbaseSmartWalletProxyBytecode) return false;
 
-    if (!code) {
-      // no code at address, check that the initCode is deploying a Coinbase Smart Wallet
-      // factory address is first 20 bytes of initCode after '0x'
-      const factoryAddress = userOp.initCode.slice(0, 42);
-      if (factoryAddress.toLowerCase() !== coinbaseSmartWalletFactoryAddress.toLowerCase())
-        return false;
-    } else {
-      // code at address, check that it is a proxy to the expected implementation
-      if (code != coinbaseSmartWalletProxyBytecode) return false;
-
-      // check that userOp.sender proxies to expected implementation
-      const implementation = await client.request<{
-        Parameters: [Address, Hex, BlockTag];
-        ReturnType: Hex;
-      }>({
-        method: "eth_getStorageAt",
-        params: [userOp.sender, erc1967ProxyImplementationSlot, "latest"],
-      });
-      const implementationAddress = decodeAbiParameters(
-        [{ type: "address" }],
-        implementation
-      )[0];
-      if (implementationAddress != coinbaseSmartWalletV1Implementation)
-        return false;
-    }
+    // check that userOp.sender proxies to expected implementation
+    const implementation = await client.request<{
+      Parameters: [Address, Hex, BlockTag];
+      ReturnType: Hex;
+    }>({
+      method: "eth_getStorageAt",
+      params: [userOp.sender, erc1967ProxyImplementationSlot, "latest"],
+    });
+    const implementationAddress = decodeAbiParameters(
+      [{ type: "address" }],
+      implementation,
+    )[0];
+    if (implementationAddress != coinbaseSmartWalletV1Implementation)
+      return false;
 
     // check that userOp.callData is making a call we want to sponsor
     const calldata = decodeFunctionData({
@@ -129,7 +142,7 @@ export async function willSponsor({
 
     let callToCheckIndex = 0;
     if (calls.length > 1) {
-      // if there is more than one call, check if the first is a MagicSpend call
+      // if there is more than one call, check if the first is a magic spend call
       if (calls[0].target.toLowerCase() !== magicSpendAddress.toLowerCase())
         return false;
       callToCheckIndex = 1;
@@ -160,8 +173,6 @@ export const coinbaseSmartWalletProxyBytecode =
   "0x363d3d373d3d363d7f360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc545af43d6000803e6038573d6000fd5b3d6000f3";
 export const coinbaseSmartWalletV1Implementation =
   "0x000100abaad02f1cfC8Bbe32bD5a564817339E72";
-export const coinbaseSmartWalletFactoryAddress =
-  "0x0BA5ED0c6AA8c49038F819E587E2633c4A9F428a";
 export const magicSpendAddress = "0x011A61C07DbF256A68256B1cB51A5e246730aB92";
 export const erc1967ProxyImplementationSlot =
   "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
@@ -212,85 +223,56 @@ export const myNFTABI = [
 ] as const;
 
 export const myNFTAddress = "0x119Ea671030FBf79AB93b436D2E20af6ea469a19";
-
 ```
 
 ```ts twoslash [config.ts] filename="config.ts"
-import { createPublicClient, http } from "viem";
+import { createClient, createPublicClient, http } from "viem";
 import { baseSepolia } from "viem/chains";
+import { entryPoint06Address, createPaymasterClient, createBundlerClient } from "viem/account-abstraction";
 
 export const client = createPublicClient({
   chain: baseSepolia,
   transport: http(),
 });
-```
-
-:::
-
-#### Create Proxy
-
-The proxy you create will need to handle the `pm_getPaymasterStubData` and `pm_getPaymasterData` JSON-RPC requests specified by ERC-7677.
-:::code-group
-
-```ts twoslash [route.ts]
-import { paymasterClient } from "./config";
-// @noErrors
-import { willSponsor } from "./utils";
-
-export async function POST(r: Request) {
-  const req = await r.json();
-  const method = req.method;
-  const [userOp, entrypoint, chainId] = req.params;
-  const sponsorable = await willSponsor({ chainId, entrypoint, userOp });
-  if (!sponsorable) {
-    return Response.json({ error: "Not a sponsorable operation" });
-  }
-
-  if (method === "pm_getPaymasterStubData") {
-    const result = await paymasterClient.getPaymasterStubData({
-      userOperation: userOp,
-    });
-    return Response.json({ result });
-  } else if (method === "pm_getPaymasterData") {
-    const result = await paymasterClient.getPaymasterData({
-      userOperation: userOp,
-    });
-    return Response.json({ result });
-  }
-  return Response.json({ error: "Method not found" });
-}
-
-```
-
-```ts twoslash [config.ts] filename="config.ts"
-// @errors: 2305 2554
-// @noErrors
-const process = { env: { PAYMASTER_SERVICE_URL: '' } }
-// ---cut---
-import { createClient, http } from "viem";
-import { baseSepolia } from "viem/chains";
-import { ENTRYPOINT_ADDRESS_V06 } from "permissionless";
-import { paymasterActionsEip7677 } from "permissionless/experimental";
 
 const paymasterService = process.env.PAYMASTER_SERVICE_URL!;
 
-export const paymasterClient = createClient({
-  chain: baseSepolia,
+export const paymasterClient = createPaymasterClient({
   transport: http(paymasterService),
-}).extend(paymasterActionsEip7677(ENTRYPOINT_ADDRESS_V06));
-```
+});
 
+export const bundlerClient = createBundlerClient({
+  chain: baseSepolia,
+  paymaster: paymasterClient, 
+  transport: http(paymasterService),
+})
+```
 :::
+
+<Callout type="warning">
+**Create a Proxy**
+
+As you can see in the Paymaster transaction [component](https://github.com/wilsoncusack/wagmi-scw/blob/main/src/components/TransactWithPaymaster.tsx),
+we use a proxy to protect the paymaster service URL, because it is exposed on the client side.
+
+For local development, you can use the same URL for the paymaster service and the proxy.
+
+We also created a [minimalist proxy API](https://github.com/wilsoncusack/wagmi-scw/blob/main/src/app/api/paymaster/route.ts)
+which you can use as the `paymasterServiceUrl` in the [`TransactWithPaymaster` component](https://github.com/wilsoncusack/wagmi-scw/blob/main/src/components/TransactWithPaymaster.tsx).
+</Callout>
 
 ### Send EIP-5792 requests with a paymaster service capability
 
 Once you have your paymaster service set up, you can now pass its URL along to Wagmi's `useWriteContracts` hook.
 
+<Callout type="info">
 If you set up a proxy in your app's backend as recommended in step (2) above, you'll want to pass in the proxy URL you created.
+</Callout>
 
 :::code-group
 
-```ts twoslash [App.tsx]
+```ts twoslash [page.tsx] filename="page.tsx"
+// @noErrors
 import { useAccount } from "wagmi";
 import { useCapabilities, useWriteContracts } from "wagmi/experimental";
 import { useMemo, useState } from "react";
@@ -314,8 +296,9 @@ export function App() {
       capabilitiesForChain["paymasterService"].supported
     ) {
       return {
+        const paymasterServiceUrl = process.env.NEXT_PUBLIC_PAYMASTER_PROXY_SERVER_URL
         paymasterService: {
-          url: `${document.location.origin}/api/paymaster`,
+          url: paymasterServiceUrl // You can also use the minimalist proxy we created: `${document.location.origin}/api/paymaster`
         },
       };
     }
@@ -367,6 +350,17 @@ export const myNFTAddress = "0x119Ea671030FBf79AB93b436D2E20af6ea469a19";
 ```
 
 :::
+
+<Callout type="success">
+**How to find this code in the repository?**
+
+The code above is a simplified version of the code in the
+[template](https://github.com/wilsoncusack/wagmi-scw/).
+
+In the template, we create a [`TransactWithPaymaster`](https://github.com/wilsoncusack/wagmi-scw/blob/main/src/components/TransactWithPaymaster.tsx) component that uses the `useWriteContracts` hook to send a transaction with a paymaster.
+
+The [`TransactWithPaymaster`](https://github.com/wilsoncusack/wagmi-scw/blob/main/src/components/TransactWithPaymaster.tsx) component is used in the [`page.tsx`](https://github.com/wilsoncusack/wagmi-scw/blob/main/src/app/page.tsx) file.
+</Callout>
 
 That's it! Smart Wallet will handle the rest. If your paymaster service is able to sponsor the transaction,
 in the UI Smart Wallet will indicate to your user that the transaction is sponsored.
