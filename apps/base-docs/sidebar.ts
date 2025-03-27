@@ -854,10 +854,6 @@ export const sidebar: Sidebar = [
                 link: '/identity/smart-wallet/guides/update-existing-app',
               },
               {
-                text: 'React Native Integration',
-                link: '/identity/smart-wallet/guides/react-native-integration',
-              },
-              {
                 text: 'Signing and Verifying Messages',
                 link: '/identity/smart-wallet/guides/signing-and-verifying-messages',
               },
