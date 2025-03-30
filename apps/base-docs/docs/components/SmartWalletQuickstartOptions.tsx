@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import NextjsSvgSW from './svg/NextjsSvgSW.tsx';
 import OnchainKitSvgSW from './svg/OnchainKitSvgSW.tsx';
 import ReactNativeSvg from './svg/ReactNativeSvg.tsx';
+
 export default function SmartWalletQuickstartOptions() {
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -17,7 +18,8 @@ export default function SmartWalletQuickstartOptions() {
       />
       <FrameworkCard
         name="React Native Integration (30 mins)"
-        href="/identity/smart-wallet/introduction/install-react-native"
+
+        href="/identity/smart-wallet/quickstart/react-native-project"
         icon={<ReactNativeSvg />}
       />
     </div>
