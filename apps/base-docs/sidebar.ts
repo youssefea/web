@@ -1199,8 +1199,8 @@ export const sidebar: Sidebar = [
                 ],
               },
               {
-                text: 'Smart Wallet RPC',
-                link: '/identity/smart-wallet-new/technical-reference/smart-wallet-rpc',
+                text: 'Spend Permissions',
+                link: '/identity/smart-wallet-new/technical-reference/spend-permissions',
               },
             ],
           },
