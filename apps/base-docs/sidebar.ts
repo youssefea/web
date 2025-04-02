@@ -934,6 +934,100 @@ export const sidebar: Sidebar = [
         ],
       },
       {
+        text: 'Smart Wallet (NEW)',
+        collapsed: true,
+        items: [
+          {
+            text: 'Quickstart',
+            link: '/identity/smart-wallet-new/quickstart',
+            items: [
+              { text: 'OnchainKit', link: '/identity/smart-wallet-new/quickstart/quick-demo' },
+              {
+                text: 'Next.js Project',
+                link: '/identity/smart-wallet-new/quickstart/nextjs-project',
+              },
+              {
+                text: 'React Native Project',
+                link: '/identity/smart-wallet-new/quickstart/react-native-project',
+              },
+            ],
+          },
+          {
+            text: 'Concepts',
+            link: '/identity/smart-wallet-new/concepts',
+            items: [
+              {
+                text: 'Features',
+                link: '/identity/smart-wallet-new/features',
+                items: [
+                  {
+                    text: 'Built-in Features',
+                    collapsed: true,
+                    items: [
+                      {
+                        text: 'Single Sign On',
+                        link: '/identity/smart-wallet-new/features/single-sign-on',
+                      },
+                      { text: 'Networks', link: '/identity/smart-wallet-new/features/networks' },
+                      { text: 'Passkeys', link: '/identity/smart-wallet-new/features/passkeys' },
+                      {
+                        text: 'Recovery',
+                        link: '/identity/smart-wallet-new/features/recovery-keys',
+                      },
+                      {
+                        text: 'MagicSpend',
+                        link: '/identity/smart-wallet-new/features/MagicSpend',
+                      },
+                    ],
+                  },
+                  {
+                    text: 'Optional Features',
+                    collapsed: true,
+                    items: [
+                      {
+                        text: 'Gas-free Transactions',
+                        link: '/identity/smart-wallet/features/gas-free-transactions',
+                      },
+                      {
+                        text: 'Spend Permissions',
+                        link: '/identity/smart-wallet/features/spend-permissions',
+                      },
+                      {
+                        text: 'Batch Transactions',
+                        link: '/identity/smart-wallet/features/batch-operations',
+                      },
+                      {
+                        text: 'Custom Gas Tokens',
+                        link: '/identity/smart-wallet/features/custom-gas-tokens',
+                      },
+                      {
+                        text: 'Sub Accounts',
+                        link: '/identity/smart-wallet/features/sub-accounts',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            text: 'Guides',
+            collapsed: true,
+            link: '/identity/smart-wallet-new/guides',
+            items: [
+              { text: 'Quick Demo', link: '/identity/smart-wallet-new/guides/quick-demo' },
+              { text: 'Next.js Project', link: '/identity/smart-wallet-new/guides/nextjs-project' },
+              {
+                text: 'React Native Project',
+                link: '/identity/smart-wallet-new/guides/react-native-project',
+              },
+            ],
+          },
+          { text: 'Examples', link: '/identity/smart-wallet-new/examples' },
+          { text: 'Technical Reference', link: '/identity/smart-wallet-new/technical-reference' },
+        ],
+      },
+      {
         text: 'Basenames',
         collapsed: true,
         items: [
